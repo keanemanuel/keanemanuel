@@ -126,7 +126,7 @@ def main():
         alpha = np.asarray(raw.split()[-1], dtype=np.float32) / 255.0
         # Composite onto white just so colour sampling has something sane
         # to read for fully-opaque and semi-transparent pixels alike.
-        canvas = Image.new("RGB", raw.size, (255, 255, 255))
+        canvas = Image.new("RGB", raw.size, (30, 20, 15))
         canvas.paste(raw, mask=raw.split()[-1])
         img = canvas
     else:
