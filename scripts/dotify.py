@@ -37,7 +37,7 @@ def build_svg(img: Image.Image, cols: int, detail: float, color: bool,
     alpha_small = None
     if alpha is not None:
         alpha_img = Image.fromarray((alpha * 255).astype(np.uint8), mode="L")
-        alpha_img = alpha_img.resize((cols, rows), Image.LANCZOS)
+        alpha_img = alpha_img.resize((cols, rows), Image.NEAREST)
         alpha_small = np.asarray(alpha_img, dtype=np.float32) / 255.0
 
     svg_w, svg_h = w, h
