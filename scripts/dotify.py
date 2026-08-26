@@ -11,8 +11,7 @@ import argparse
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageOps, ImageFilter
-
+from PIL import Image, ImageOps, ImageFilter, ImageEnhance
 
 def build_svg(img: Image.Image, cols: int, detail: float, color: bool,
               bg: str, max_dot: float, min_dot: float,
@@ -105,7 +104,7 @@ def main():
         img = canvas
     else:
         img = raw.convert("RGB")
-
+    img = ImageEnhance.Color(img).enhance(1.8)
     if args.equalize:
         gray = ImageOps.equalize(img.convert("L"))
         if args.color:
