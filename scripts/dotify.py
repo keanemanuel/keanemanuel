@@ -4,7 +4,7 @@ dotify.py — turn a photo into a dot-matrix SVG portrait for a GitHub README.
 
 Usage:
     python dotify.py input.png -o assets/portrait \
-        --cols 100 --equalize --detail 0.5 --color --animate
+        --cols 100 --detail 0.5 --color --animate
 """
 
 import argparse
@@ -13,9 +13,11 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageOps, ImageFilter, ImageEnhance
 
+
 def build_svg(img: Image.Image, cols: int, detail: float, color: bool,
               bg: str, max_dot: float, min_dot: float,
-              animate: bool = False, anim_duration: float = 2.5) -> str:
+              animate: bool = False, anim_duration: float = 2.5,
+              alpha: np.ndarray = None) -> str:
     w, h = img.size
     cell = w / cols
     rows = max(1, round(h / cell))
@@ -29,6 +31,14 @@ def build_svg(img: Image.Image, cols: int, detail: float, color: bool,
 
     gray = 0.5 + (gray - 0.5) * (0.4 + 1.6 * detail)
     gray = np.clip(gray, 0, 1)
+
+    # Resize the alpha mask the same way, nearest-ish via LANCZOS on a
+    # single-channel image, then threshold: >0.5 means "real content here"
+    alpha_small = None
+    if alpha is not None:
+        alpha_img = Image.fromarray((alpha * 255).astype(np.uint8), mode="L")
+        alpha_img = alpha_img.resize((cols, rows), Image.LANCZOS)
+        alpha_small = np.asarray(alpha_img, dtype=np.float32) / 255.0
 
     svg_w, svg_h = w, h
     parts = [
@@ -51,9 +61,18 @@ def build_svg(img: Image.Image, cols: int, detail: float, color: bool,
 
     for ry in range(rows):
         for rx in range(cols):
-            intensity = 1.0 - gray[ry, rx]
-            if intensity <= 0.08:
-                continue
+            # If we have real alpha data, that alone decides whether this
+            # cell has content — a white sleeve (alpha=1) always draws,
+            # a transparent background (alpha=0) never does.
+            if alpha_small is not None:
+                if alpha_small[ry, rx] < 0.5:
+                    continue
+                intensity = max(0.15, 1.0 - gray[ry, rx])
+            else:
+                intensity = 1.0 - gray[ry, rx]
+                if intensity <= 0.08:
+                    continue
+
             radius = (min_dot + (max_dot - min_dot) * intensity) * (cell / 2)
             cx = (rx + 0.5) * cell
             cy = (ry + 0.5) * cell_h
@@ -94,17 +113,25 @@ def main():
                      help="reveal the portrait top-to-bottom on load (plays once)")
     ap.add_argument("--anim-duration", type=float, default=2.5,
                      help="seconds for the top-to-bottom reveal animation")
+    ap.add_argument("--saturation", type=float, default=1.6,
+                     help="colour saturation multiplier, 1.0 = unchanged")
     args = ap.parse_args()
 
     raw = Image.open(args.input)
+    alpha = None
     if raw.mode in ("RGBA", "LA") or (raw.mode == "P" and "transparency" in raw.info):
         raw = raw.convert("RGBA")
+        alpha = np.asarray(raw.split()[-1], dtype=np.float32) / 255.0
+        # Composite onto white just so colour sampling has something sane
+        # to read for fully-opaque and semi-transparent pixels alike.
         canvas = Image.new("RGB", raw.size, (255, 255, 255))
         canvas.paste(raw, mask=raw.split()[-1])
         img = canvas
     else:
         img = raw.convert("RGB")
-    img = ImageEnhance.Color(img).enhance(1.8)
+
+    img = ImageEnhance.Color(img).enhance(args.saturation)
+
     if args.equalize:
         gray = ImageOps.equalize(img.convert("L"))
         if args.color:
@@ -124,6 +151,7 @@ def main():
         min_dot=args.min_dot,
         animate=args.animate,
         anim_duration=args.anim_duration,
+        alpha=alpha,
     )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
