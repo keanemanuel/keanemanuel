@@ -17,7 +17,7 @@ from PIL import Image, ImageOps, ImageFilter, ImageEnhance
 def build_svg(img: Image.Image, cols: int, detail: float, color: bool,
               bg: str, max_dot: float, min_dot: float,
               animate: bool = False, anim_duration: float = 2.5,
-              alpha: np.ndarray = None) -> str:
+              alpha: np.ndarray = None, alpha_threshold: float = 0.7) -> str:
     w, h = img.size
     cell = w / cols
     rows = max(1, round(h / cell))
@@ -65,7 +65,7 @@ def build_svg(img: Image.Image, cols: int, detail: float, color: bool,
             # cell has content — a white sleeve (alpha=1) always draws,
             # a transparent background (alpha=0) never does.
             if alpha_small is not None:
-                if alpha_small[ry, rx] < 0.5:
+                if alpha_small[ry, rx] < 0.9999:
                     continue
                 intensity = max(0.15, 1.0 - gray[ry, rx])
             else:
@@ -113,6 +113,8 @@ def main():
                      help="reveal the portrait top-to-bottom on load (plays once)")
     ap.add_argument("--anim-duration", type=float, default=2.5,
                      help="seconds for the top-to-bottom reveal animation")
+    ap.add_argument("--alpha-threshold", type=float, default=0.7,
+                     help="0-1, how opaque a pixel must be to draw a dot")
     ap.add_argument("--saturation", type=float, default=1.6,
                      help="colour saturation multiplier, 1.0 = unchanged")
     args = ap.parse_args()
@@ -152,6 +154,7 @@ def main():
         animate=args.animate,
         anim_duration=args.anim_duration,
         alpha=alpha,
+        alpha_threshold=args.alpha_threshold,
     )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
