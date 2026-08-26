@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 989" width="1024" height="989">
-<rect x="0" y="0" width="1024" height="989" fill="#ffffff"/>
+<rect x="0" y="0" width="1024" height="989" fill="none"/>
 <defs>
   <clipPath id="reveal">
     <rect x="0" y="0" width="1024" height="0">
