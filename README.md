@@ -1,3 +1,7 @@
+<div align="center">
+<img src="assets/portrait.svg" width="300" alt="Keane Manuel, rendered as a dot matrix">
+</div>
+
 ## About Me
 Hi, I'm Keane Manuel, studying Data Science @ The University of Melbourne, building at the intersection of machine learning and software engineering, with experience in Python, C, C++, SQL, Java, HTML/CSS, and Git/GitHub
 
