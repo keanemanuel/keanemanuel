@@ -11,7 +11,7 @@ import argparse
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageFilter
 
 
 def build_svg(img: Image.Image, cols: int, detail: float, color: bool,
@@ -22,7 +22,9 @@ def build_svg(img: Image.Image, cols: int, detail: float, color: bool,
     rows = max(1, round(h / cell))
     cell_h = h / rows
 
-    small = img.resize((cols, rows), Image.LANCZOS)
+    blur_radius = max(1.0, (w / cols) * 0.6)
+    blurred = img.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+    small = blurred.resize((cols, rows), Image.LANCZOS)
     rgb = np.asarray(small.convert("RGB"), dtype=np.float32)
     gray = np.asarray(small.convert("L"), dtype=np.float32) / 255.0
 
@@ -51,7 +53,7 @@ def build_svg(img: Image.Image, cols: int, detail: float, color: bool,
     for ry in range(rows):
         for rx in range(cols):
             intensity = 1.0 - gray[ry, rx]
-            if intensity <= 0.02:
+            if intensity <= 0.08:
                 continue
             radius = (min_dot + (max_dot - min_dot) * intensity) * (cell / 2)
             cx = (rx + 0.5) * cell
@@ -95,7 +97,14 @@ def main():
                      help="seconds for the top-to-bottom reveal animation")
     args = ap.parse_args()
 
-    img = Image.open(args.input).convert("RGB")
+    raw = Image.open(args.input)
+    if raw.mode in ("RGBA", "LA") or (raw.mode == "P" and "transparency" in raw.info):
+        raw = raw.convert("RGBA")
+        canvas = Image.new("RGB", raw.size, (255, 255, 255))
+        canvas.paste(raw, mask=raw.split()[-1])
+        img = canvas
+    else:
+        img = raw.convert("RGB")
 
     if args.equalize:
         gray = ImageOps.equalize(img.convert("L"))
